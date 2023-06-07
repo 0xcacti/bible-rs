@@ -80,7 +80,7 @@ const BOOKS: [&'static str; 73] = [
 
 /// bible-rs is a command line tool for getting a random verse from the Bible.
 #[derive(Debug, Parser)]
-#[command(name="bible-rs", version=crate_version!(), about="daily bread", long_about = ABOUT)]
+#[command(name="bible-rs", version=crate_version!(), about="daily bread", long_about = ABOUT, arg_required_else_help(true))]
 struct BibleParser {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -93,6 +93,8 @@ struct BibleParser {
 enum Commands {
     /// Get list of verses
     List,
+    Daily,
+    New,
 }
 
 fn main() {
@@ -112,6 +114,8 @@ fn main() {
                 println!("{}", book);
             }
         }
-        None => println!("No command given"),
+        Some(Commands::Daily) => println!("Daily"),
+        Some(Commands::New) => println!("New"),
+        None => return,
     }
 }
