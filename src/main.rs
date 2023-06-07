@@ -84,29 +84,26 @@ const BOOKS: [&'static str; 73] = [
 struct BibleParser {
     #[command(subcommand)]
     command: Option<Commands>,
-    /// Desired book of the Bible
-    #[arg(short = 'b', long = "book")]
-    book: Option<String>,
 }
 
 #[derive(Debug, Subcommand)]
 enum Commands {
-    /// Get list of verses
+    /// Get a list of Books in the Bible
     List,
+    /// Get the daily random verse from the Bible
     Daily,
+    /// get a new random verse from the Bible
     New,
+    /// Get a random verse from a specific book of the Bible
+    Book {
+        /// Desired book of the Bible
+        #[arg(required = true)]
+        book: Option<String>,
+    },
 }
 
 fn main() {
     let args = BibleParser::parse();
-
-    if let Some(book) = args.book.as_deref() {
-        if BOOKS.contains(&book) {
-            println!("Book: {}", book);
-        } else {
-            println!("Book not found");
-        }
-    }
 
     match &args.command {
         Some(Commands::List) => {
@@ -116,6 +113,15 @@ fn main() {
         }
         Some(Commands::Daily) => println!("Daily"),
         Some(Commands::New) => println!("New"),
+        Some(Commands::Book { book }) => {
+            if let Some(book) = book {
+                if BOOKS.contains(&book.as_str()) {
+                    println!("Book: {}", book);
+                } else {
+                    println!("Book not found");
+                }
+            }
+        }
         None => return,
     }
 }
