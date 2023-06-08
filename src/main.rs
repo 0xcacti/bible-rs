@@ -1,4 +1,5 @@
 use clap::{crate_version, Parser, Subcommand};
+use reqwest::Client;
 
 const ABOUT: &str = "Get a random verse from the Bible.";
 
@@ -102,7 +103,8 @@ enum Commands {
     },
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = BibleParser::parse();
 
     match &args.command {
@@ -111,7 +113,10 @@ fn main() {
                 println!("{}", book);
             }
         }
-        Some(Commands::Daily) => println!("Daily"),
+        Some(Commands::Daily) => {
+            println!("Daily");
+            get_daily_verse().await;
+        }
         Some(Commands::New) => println!("New"),
         Some(Commands::Book { book }) => {
             if let Some(book) = book {
@@ -126,4 +131,22 @@ fn main() {
     }
 }
 
-fn get_daily_verse() {}
+async fn get_daily_verse() -> Result<(), reqwest::Error> {
+    let client = Client::new();
+
+    // Set up the request headers with the API key
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        AUTHORIZATION,
+        HeaderValue::from_str(&format!("APIKEY {}", api_key))?,
+    );
+
+    let resp = reqwest::get("https://api.scripture.api.bible/v1/bibles")
+        .await?
+        .text()
+        .await?;
+
+    println!("body = {:?}", resp);
+
+    Ok(())
+}
