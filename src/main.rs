@@ -118,10 +118,12 @@ fn main() {
                 if BOOKS.contains(&book.as_str()) {
                     println!("Book: {}", book);
                 } else {
-                    println!("Book not found");
+                    println!("Book not found, please try again.  Use `bible-rs list` to see the Books of the Bible and their spellings.");
                 }
             }
         }
         None => return,
     }
 }
+
+fn get_daily_verse() {}
