@@ -1,5 +1,7 @@
 use clap::{crate_version, Parser, Subcommand};
+use dotenv::dotenv;
 use reqwest::Client;
+use std::env;
 
 const ABOUT: &str = "Get a random verse from the Bible.";
 
