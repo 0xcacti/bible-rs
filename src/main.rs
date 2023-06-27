@@ -1,89 +1,15 @@
+pub mod api;
+
 use clap::{crate_version, Parser, Subcommand};
-use dotenv::dotenv;
 use reqwest::{
-    header::{HeaderMap, HeaderValue, AUTHORIZATION},
+    header::{HeaderMap, HeaderValue},
     Client,
 };
 use std::env;
 
 const ABOUT: &str = "Get a random verse from the Bible.";
-
-const BOOKS: [&'static str; 73] = [
-    "Genesis",
-    "Exodus",
-    "Leviticus",
-    "Numbers",
-    "Deuteronomy",
-    "Joshua",
-    "Judges",
-    "Ruth",
-    "1 Samuel",
-    "2 Samuel",
-    "1 Kings",
-    "2 Kings",
-    "1 Chronicles",
-    "2 Chronicles",
-    "Ezra",
-    "Nehemiah",
-    "Tobit",
-    "Judith",
-    "Esther",
-    "1 Maccabees",
-    "2 Maccabees",
-    "Job",
-    "Psalms",
-    "Proverbs",
-    "Ecclesiastes",
-    "Song of Songs",
-    "Wisdom",
-    "Sirach",
-    "Isaiah",
-    "Jeremiah",
-    "Lamentations",
-    "Baruch",
-    "Ezekiel",
-    "Daniel",
-    "Hosea",
-    "Joel",
-    "Amos",
-    "Obadiah",
-    "Jonah",
-    "Micah",
-    "Nahum",
-    "Habakkuk",
-    "Zephaniah",
-    "Haggai",
-    "Zechariah",
-    "Malachi",
-    "Matthew",
-    "Mark",
-    "Luke",
-    "John",
-    "Acts",
-    "Romans",
-    "1 Corinthians",
-    "2 Corinthians",
-    "Galatians",
-    "Ephesians",
-    "Philippians",
-    "Colossians",
-    "1 Thessalonians",
-    "2 Thessalonians",
-    "1 Timothy",
-    "2 Timothy",
-    "Titus",
-    "Philemon",
-    "Hebrews",
-    "James",
-    "1 Peter",
-    "2 Peter",
-    "1 John",
-    "2 John",
-    "3 John",
-    "Jude",
-    "Revelation",
-];
-
+const DEFAULT_VERSION: &str = "kjv";
+const DEFAULT_KEY: &str = "b9f970d519f43f80d3d1818a74cb674b";
 /// bible-rs is a command line tool for getting a random verse from the Bible.
 #[derive(Debug, Parser)]
 #[command(name="bible-rs", version=crate_version!(), about="daily bread", long_about = ABOUT, arg_required_else_help(true))]
@@ -95,14 +21,38 @@ struct BibleParser {
 #[derive(Debug, Subcommand)]
 enum Commands {
     /// Get a list of Books in the Bible
-    List,
+    List {
+        /// The API key to Use
+        #[arg(required = false, default_value = DEFAULT_KEY)]
+        api_key: Option<String>,
+        #[arg(required = false, default_value = DEFAULT_VERSION)]
+        version: Option<String>,
+    },
     /// Get the daily random verse from the Bible
-    Daily,
+    Daily {
+        /// The API key to Use
+        #[arg(required = false, default_value = DEFAULT_KEY)]
+        api_key: Option<String>,
+        #[arg(required = false, default_value = DEFAULT_VERSION)]
+        version: Option<String>,
+    },
     /// get a new random verse from the Bible
-    New,
+    New {
+        /// The API key to Use
+        #[arg(required = false, default_value = DEFAULT_KEY)]
+        api_key: Option<String>,
+        #[arg(required = false, default_value = DEFAULT_VERSION)]
+        version: Option<String>,
+    },
     /// Get a random verse from a specific book of the Bible
     Book {
-        /// Desired book of the Bible
+        /// The API key to Use
+        #[arg(required = false, default_value = DEFAULT_KEY)]
+        api_key: Option<String>,
+        /// The version of the Bible to use
+        #[arg(required = false, default_value = DEFAULT_VERSION)]
+        version: Option<String>,
+        /// The book of the Bible to get a verse from
         #[arg(required = true)]
         book: Option<String>,
     },
@@ -113,27 +63,37 @@ async fn main() {
     let args = BibleParser::parse();
 
     match &args.command {
-        Some(Commands::List) => {
-            for book in BOOKS.iter() {
-                println!("{}", book);
-            }
+        Some(Commands::List { api_key, version }) => {
+            println!("stub list");
         }
-        Some(Commands::Daily) => {
-            println!("Daily");
+        Some(Commands::Daily { api_key, version }) => {
+            println!("daily stub");
             get_daily_verse().await;
         }
-        Some(Commands::New) => println!("New"),
-        Some(Commands::Book { book }) => {
-            if let Some(book) = book {
-                if BOOKS.contains(&book.as_str()) {
-                    println!("Book: {}", book);
-                } else {
-                    println!("Book not found, please try again.  Use `bible-rs list` to see the Books of the Bible and their spellings.");
-                }
-            }
+        Some(Commands::New { api_key, version }) => {
+            println!("New");
+        }
+        Some(Commands::Book {
+            api_key,
+            version,
+            book,
+        }) => {
+            //            if let Some(book) = book {
+            //                if BOOKS.contains(&book.as_str()) {
+            //                    println!("Book: {}", book);
+            //                } else {
+            //                    println!("Book not found, please try again.  Use `bible-rs list` to see the Books of the Bible and their spellings.");
+            //                }
+            //            }
+            //
+            println!("stub book");
         }
         None => return,
     }
+}
+
+async fn get_books() -> Result<(), reqwest::Error> {
+    Ok(())
 }
 
 async fn get_daily_verse() -> Result<(), reqwest::Error> {
