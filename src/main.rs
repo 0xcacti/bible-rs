@@ -1,6 +1,9 @@
 use clap::{crate_version, Parser, Subcommand};
 use dotenv::dotenv;
-use reqwest::Client;
+use reqwest::{
+    header::{HeaderMap, HeaderValue, AUTHORIZATION},
+    Client,
+};
 use std::env;
 
 const ABOUT: &str = "Get a random verse from the Bible.";
@@ -135,20 +138,22 @@ async fn main() {
 
 async fn get_daily_verse() -> Result<(), reqwest::Error> {
     let client = Client::new();
-
+    let api_key = "b9f970d519f43f80d3d1818a74cb674b";
     // Set up the request headers with the API key
     let mut headers = HeaderMap::new();
-    headers.insert(
-        AUTHORIZATION,
-        HeaderValue::from_str(&format!("APIKEY {}", api_key))?,
-    );
 
-    let resp = reqwest::get("https://api.scripture.api.bible/v1/bibles")
-        .await?
-        .text()
-        .await?;
+    //    let bible_version_id = "685d1470fe4d5c3b-01";
+    //    let bible_book_id = "genesis";
+    let url = format!("https://api.scripture.api.bible/v1/bibles",);
 
-    println!("body = {:?}", resp);
+    headers.insert("api-key", HeaderValue::from_str(api_key).unwrap());
+
+    let resp = client.get(url).headers(headers).send().await?;
+    let resp_body = resp.text().await?;
+
+    println!("Response body = {:?}", resp_body);
+
+    println!("body = {:?}", resp_body);
 
     Ok(())
 }
