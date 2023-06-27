@@ -47,11 +47,11 @@ enum Commands {
     /// Get a random verse from a specific book of the Bible
     Book {
         /// The API key to Use
-        #[arg(required = false, default_value = DEFAULT_KEY)]
+        #[arg( required = false, default_value = DEFAULT_KEY)]
         api_key: Option<String>,
         /// The version of the Bible to use
         #[arg(required = false, default_value = DEFAULT_VERSION)]
-        version: Option<String>,
+        bible_version: Option<String>,
         /// The book of the Bible to get a verse from
         #[arg(required = true)]
         book: Option<String>,
@@ -75,7 +75,7 @@ async fn main() {
         }
         Some(Commands::Book {
             api_key,
-            version,
+            bible_version,
             book,
         }) => {
             //            if let Some(book) = book {
