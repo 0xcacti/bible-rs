@@ -14,45 +14,28 @@ const DEFAULT_KEY: &str = "b9f970d519f43f80d3d1818a74cb674b";
 #[derive(Debug, Parser)]
 #[command(name="bible-rs", version=crate_version!(), about="daily bread", long_about = ABOUT, arg_required_else_help(true))]
 struct BibleParser {
+    /// The subcommand to run
     #[command(subcommand)]
     command: Option<Commands>,
+    /// The version of the Bible to use
+    #[arg(short, long, required = false, default_value = DEFAULT_VERSION, global = true)]
+    bible_version: Option<String>,
+    /// The API key to use
+    #[arg(short, long, required = false, default_value = DEFAULT_KEY, global = true)]
+    api_key: Option<String>,
 }
 
 #[derive(Debug, Subcommand)]
 enum Commands {
     /// Get a list of Books in the Bible
-    List {
-        /// The API key to Use
-        #[arg(required = false, default_value = DEFAULT_KEY)]
-        api_key: Option<String>,
-        #[arg(required = false, default_value = DEFAULT_VERSION)]
-        version: Option<String>,
-    },
+    List,
     /// Get the daily random verse from the Bible
-    Daily {
-        /// The API key to Use
-        #[arg(required = false, default_value = DEFAULT_KEY)]
-        api_key: Option<String>,
-        #[arg(required = false, default_value = DEFAULT_VERSION)]
-        version: Option<String>,
-    },
+    Daily,
     /// get a new random verse from the Bible
-    New {
-        /// The API key to Use
-        #[arg(required = false, default_value = DEFAULT_KEY)]
-        api_key: Option<String>,
-        #[arg(required = false, default_value = DEFAULT_VERSION)]
-        version: Option<String>,
-    },
+    New,
     /// Get a random verse from a specific book of the Bible
     Book {
-        /// The API key to Use
-        #[arg( required = false, default_value = DEFAULT_KEY)]
-        api_key: Option<String>,
-        /// The version of the Bible to use
-        #[arg(required = false, default_value = DEFAULT_VERSION)]
-        bible_version: Option<String>,
-        /// The book of the Bible to get a verse from
+        /// The book of the Bible to get a random verse from
         #[arg(required = true)]
         book: Option<String>,
     },
@@ -63,21 +46,17 @@ async fn main() {
     let args = BibleParser::parse();
 
     match &args.command {
-        Some(Commands::List { api_key, version }) => {
+        Some(Commands::List) => {
             println!("stub list");
         }
-        Some(Commands::Daily { api_key, version }) => {
+        Some(Commands::Daily) => {
             println!("daily stub");
             get_daily_verse().await;
         }
-        Some(Commands::New { api_key, version }) => {
+        Some(Commands::New) => {
             println!("New");
         }
-        Some(Commands::Book {
-            api_key,
-            bible_version,
-            book,
-        }) => {
+        Some(Commands::Book { book }) => {
             //            if let Some(book) = book {
             //                if BOOKS.contains(&book.as_str()) {
             //                    println!("Book: {}", book);
