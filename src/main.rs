@@ -1,11 +1,30 @@
-pub mod api;
+use figment::{
+    providers::{Env, Format, Toml},
+    Figment,
+};
 
 use clap::{crate_version, Parser, Subcommand};
 use reqwest::{
     header::{HeaderMap, HeaderValue},
     Client,
 };
+use serde::Deserialize;
 use std::env;
+
+#[derive(Debug, Deserialize)]
+struct Config {
+    api_key: Option<String>,
+    bible_version: Option<String>,
+}
+
+impl Default for Config {
+    fn default() -> Config {
+        Config {
+            api_key: None,
+            bible_version: Some("kjv".to_string()),
+        }
+    }
+}
 
 const ABOUT: &str = "Get a random verse from the Bible.";
 const DEFAULT_VERSION: &str = "kjv";
@@ -18,10 +37,10 @@ struct BibleParser {
     #[command(subcommand)]
     command: Option<Commands>,
     /// The version of the Bible to use
-    #[arg(short, long, required = false, default_value = DEFAULT_VERSION, global = true)]
+    #[arg(short, long, required = false, global = true)]
     bible_version: Option<String>,
     /// The API key to use
-    #[arg(short, long, required = false, default_value = DEFAULT_KEY, global = true)]
+    #[arg(short, long, required = false, global = true)]
     api_key: Option<String>,
 }
 
@@ -43,7 +62,24 @@ enum Commands {
 
 #[tokio::main]
 async fn main() {
+    let mut config: Config = Figment::new()
+        .merge(Toml::file("bible-rs.toml"))
+        .merge(Env::prefixed("BIBLE_RS_"))
+        .extract()
+        .unwrap();
+
+    println!("config = {:?}", config);
+
     let args = BibleParser::parse();
+
+    if let Some(api_key) = args.api_key {
+        config.api_key = Some(api_key);
+    }
+
+    if let Some(bible_version) = args.bible_version {
+        config.bible_version = Some(bible_version);
+    }
+    println!("config = {:?}", config);
 
     match &args.command {
         Some(Commands::List) => {
