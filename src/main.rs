@@ -1,13 +1,12 @@
+pub mod api;
+
+use api::{get_books, get_daily_verse};
 use figment::{
     providers::{Env, Format, Toml},
     Figment,
 };
 
 use clap::{crate_version, Parser, Subcommand};
-use reqwest::{
-    header::{HeaderMap, HeaderValue},
-    Client,
-};
 use serde::Deserialize;
 use std::env;
 
@@ -21,13 +20,13 @@ impl Default for Config {
     fn default() -> Config {
         Config {
             api_key: None,
-            bible_version: Some("kjv".to_string()),
+            bible_version: None,
         }
     }
 }
 
 const ABOUT: &str = "Get a random verse from the Bible.";
-const DEFAULT_VERSION: &str = "kjv";
+const DEFAULT_VERSION: &str = "de4e12af7f28f599-02";
 const DEFAULT_KEY: &str = "b9f970d519f43f80d3d1818a74cb674b";
 /// bible-rs is a command line tool for getting a random verse from the Bible.
 #[derive(Debug, Parser)]
@@ -46,7 +45,7 @@ struct BibleParser {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
-    /// Get a list of Books in the Bible
+    /// Get a list of Books in the provided Bible version
     List,
     /// Get the daily random verse from the Bible
     Daily,
@@ -68,26 +67,44 @@ async fn main() {
         .extract()
         .unwrap();
 
-    println!("config = {:?}", config);
-
     let args = BibleParser::parse();
-
-    if let Some(api_key) = args.api_key {
-        config.api_key = Some(api_key);
+    match args.api_key {
+        Some(api_key) => config.api_key = Some(api_key),
+        None => match config.api_key {
+            Some(api_key) => config.api_key = Some(api_key),
+            None => config.api_key = Some(DEFAULT_KEY.to_string()),
+        },
     }
-
-    if let Some(bible_version) = args.bible_version {
-        config.bible_version = Some(bible_version);
+    match args.bible_version {
+        Some(bible_version) => config.bible_version = Some(bible_version),
+        None => match config.bible_version {
+            Some(bible_version) => config.bible_version = Some(bible_version),
+            None => config.bible_version = Some(DEFAULT_VERSION.to_string()),
+        },
     }
-    println!("config = {:?}", config);
 
     match &args.command {
         Some(Commands::List) => {
-            println!("stub list");
+            match get_books(
+                config.api_key.unwrap().as_str(),
+                config.bible_version.unwrap().as_str(),
+            )
+            .await
+            {
+                Ok(_) => return,
+                Err(e) => println!("Error: {}", e),
+            }
         }
         Some(Commands::Daily) => {
-            println!("daily stub");
-            get_daily_verse().await;
+            match get_daily_verse(
+                config.api_key.unwrap().as_str(),
+                config.bible_version.unwrap().as_str(),
+            )
+            .await
+            {
+                Ok(_) => return,
+                Err(e) => println!("Error: {}", e),
+            }
         }
         Some(Commands::New) => {
             println!("New");
@@ -105,30 +122,4 @@ async fn main() {
         }
         None => return,
     }
-}
-
-async fn get_books() -> Result<(), reqwest::Error> {
-    Ok(())
-}
-
-async fn get_daily_verse() -> Result<(), reqwest::Error> {
-    let client = Client::new();
-    let api_key = "b9f970d519f43f80d3d1818a74cb674b";
-    // Set up the request headers with the API key
-    let mut headers = HeaderMap::new();
-
-    //    let bible_version_id = "685d1470fe4d5c3b-01";
-    //    let bible_book_id = "genesis";
-    let url = format!("https://api.scripture.api.bible/v1/bibles",);
-
-    headers.insert("api-key", HeaderValue::from_str(api_key).unwrap());
-
-    let resp = client.get(url).headers(headers).send().await?;
-    let resp_body = resp.text().await?;
-
-    println!("Response body = {:?}", resp_body);
-
-    println!("body = {:?}", resp_body);
-
-    Ok(())
 }
