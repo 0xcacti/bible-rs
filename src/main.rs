@@ -19,18 +19,15 @@ struct Config {
 impl Default for Config {
     fn default() -> Config {
         Config {
-            api_key: None,
-            bible_version: None,
+            api_key: Some("de4e12af7f28f599-02".to_string()),
+            bible_version: Some("b9f970d519f43f80d3d1818a74cb674b".to_string()),
         }
     }
 }
 
-const ABOUT: &str = "Get a random verse from the Bible.";
-const DEFAULT_VERSION: &str = "de4e12af7f28f599-02";
-const DEFAULT_KEY: &str = "b9f970d519f43f80d3d1818a74cb674b";
 /// bible-rs is a command line tool for getting a random verse from the Bible.
 #[derive(Debug, Parser)]
-#[command(name="bible-rs", version=crate_version!(), about="daily bread", long_about = ABOUT, arg_required_else_help(true))]
+#[command(name="bible-rs", version=crate_version!(), about="daily bread", long_about = "Get a random verse from the Bible.", arg_required_else_help(true))]
 struct BibleParser {
     /// The subcommand to run
     #[command(subcommand)]
@@ -72,14 +69,14 @@ async fn main() {
         Some(api_key) => config.api_key = Some(api_key),
         None => match config.api_key {
             Some(api_key) => config.api_key = Some(api_key),
-            None => config.api_key = Some(DEFAULT_KEY.to_string()),
+            None => config.api_key = Config::default().bible_version,
         },
     }
     match args.bible_version {
         Some(bible_version) => config.bible_version = Some(bible_version),
         None => match config.bible_version {
             Some(bible_version) => config.bible_version = Some(bible_version),
-            None => config.bible_version = Some(DEFAULT_VERSION.to_string()),
+            None => config.bible_version = Config::default().bible_version,
         },
     }
 
