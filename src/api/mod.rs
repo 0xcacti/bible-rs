@@ -139,8 +139,13 @@ async fn get_random_chapter(
     let json: serde_json::Value =
         serde_json::from_str(&resp_body).expect("JSON was not well-formatted");
     let chapter_list = json["data"].as_array().unwrap();
-    let chapter_index = rng.gen_range(0..chapter_list.len());
-    let chapter = chapter_list.get(chapter_index).unwrap();
+    println!("chapter_list = {:?}", chapter_list);
+    let mut chapter_index = rng.gen_range(0..chapter_list.len());
+    let mut chapter = chapter_list.get(chapter_index).unwrap();
+    if chapter["number"] == "intro" {
+        chapter_index = chapter_index + 1;
+        chapter = chapter_list.get(chapter_index).unwrap();
+    }
     let chapter = chapter["id"].as_str().unwrap().to_string();
     println!("chapter = {:?}", chapter);
     Ok(chapter)
@@ -156,6 +161,7 @@ async fn get_random_verse(
     let client = Client::new();
     let mut headers = HeaderMap::new();
     let url = format!("{BASE_URL}{version}/chapters/{chapter}/verses");
+
     println!("{url}");
 
     headers.insert("api-key", HeaderValue::from_str(api_key).unwrap());
@@ -173,12 +179,27 @@ async fn get_random_verse(
     let mut headers = HeaderMap::new();
     headers.insert("api-key", HeaderValue::from_str(api_key).unwrap());
     headers.insert(ACCEPT, HeaderValue::from_static("application/json")); // Adding the Accept header
-    let resp = client.get(url).headers(headers).send().await?;
+    let resp = client
+        .get(url)
+        .query(&[
+            ("content-type", "text"),
+            ("include-notes", "false"),
+            ("include-titles", "false"),
+            ("include-chapter-numbers", "false"),
+            ("include-verse-numbers", "false"),
+            ("include-verse-spans", "false"),
+            ("use-org-id", "false"),
+        ])
+        .headers(headers)
+        .send()
+        .await?;
     let resp_body = resp.text().await?;
     let json: serde_json::Value =
         serde_json::from_str(&resp_body).expect("JSON was not well-formatted");
-    let verse_text = json["data"]["content"].as_str().unwrap().to_string();
-    println!("{verse_id}");
-    println!("verse = {:?}", verse_text);
+    println!("json = {:?}", json);
+
+    let verse_text = json["data"]["content"].as_str().unwrap();
+    let verse = String::from(verse_text);
+    println!("verse = {:?}", verse.trim());
     Ok(())
 }
