@@ -10,6 +10,8 @@ use clap::{crate_version, Parser, Subcommand};
 use serde::Deserialize;
 use std::env;
 
+use crate::api::get_new_verse;
+
 #[derive(Debug, Deserialize)]
 struct Config {
     api_key: Option<String>,
@@ -105,6 +107,15 @@ async fn main() {
         }
         Some(Commands::New) => {
             println!("New");
+            match get_new_verse(
+                config.api_key.unwrap().as_str(),
+                config.bible_version.unwrap().as_str(),
+            )
+            .await
+            {
+                Ok(_) => return,
+                Err(e) => println!("Error: {}", e),
+            }
         }
         Some(Commands::Book { book }) => {
             //            if let Some(book) = book {

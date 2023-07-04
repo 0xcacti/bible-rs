@@ -38,6 +38,19 @@ pub async fn get_daily_verse(api_key: &str, version: &str) -> Result<(), reqwest
 }
 
 pub async fn get_new_verse(api_key: &str, version: &str) -> Result<(), reqwest::Error> {
+    let seed: u64 = rand::thread_rng().gen();
+    let mut rng = StdRng::seed_from_u64(seed);
+
+    let book = get_random_book(api_key, version, &mut rng).await;
+    let chapter = get_random_chapter(api_key, version, &book.as_ref().unwrap(), &mut rng).await;
+    let verse = get_random_verse(
+        api_key,
+        version,
+        &book.unwrap(),
+        &chapter.unwrap(),
+        &mut rng,
+    )
+    .await;
     Ok(())
 }
 
