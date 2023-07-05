@@ -1,5 +1,5 @@
+use anyhow::Result;
 use rand_core::SeedableRng;
-
 use reqwest::{
     header::{HeaderMap, HeaderValue, ACCEPT},
     Client,
@@ -14,55 +14,48 @@ use chrono::Local;
 const BASE_URL: &str = "https://api.scripture.api.bible/v1/bibles/";
 
 // define public functions
-pub async fn get_daily_verse(api_key: &str, version: &str) -> Result<(), reqwest::Error> {
-    // I need to create an algorithm to first get a seeded random book, then a random chapter, then a
-    // random verse
-    // this should all be fairly straight forward.
+
+/// fetch a daily random verse
+pub async fn get_daily_verse(api_key: &str, version: &str) -> Result<()> {
     let seed = get_rng_seed_from_date();
     let mut rng = StdRng::seed_from_u64(seed);
-    println!("seed = {:?}", rng);
 
     let book = get_random_book(api_key, version, &mut rng).await;
     let chapter = get_random_chapter(api_key, version, &book.as_ref().unwrap(), &mut rng).await;
-    let verse = get_random_verse(
-        api_key,
-        version,
-        &book.unwrap(),
-        &chapter.unwrap(),
-        &mut rng,
-    )
-    .await;
+    let verse = get_random_verse(api_key, version, &chapter.unwrap(), &mut rng)
+        .await
+        .unwrap();
 
     // get a random book
     Ok(())
 }
 
-pub async fn get_new_verse(api_key: &str, version: &str) -> Result<(), reqwest::Error> {
+pub async fn get_new_verse(api_key: &str, version: &str) -> Result<()> {
     let seed: u64 = rand::thread_rng().gen();
     let mut rng = StdRng::seed_from_u64(seed);
 
     let book = get_random_book(api_key, version, &mut rng).await;
     let chapter = get_random_chapter(api_key, version, &book.as_ref().unwrap(), &mut rng).await;
-    let verse = get_random_verse(
-        api_key,
-        version,
-        &book.unwrap(),
-        &chapter.unwrap(),
-        &mut rng,
-    )
-    .await;
+    let verse = get_random_verse(api_key, version, &chapter.unwrap(), &mut rng).await?;
     Ok(())
 }
 
-pub async fn get_new_verse_from_book(
-    api_key: &str,
-    version: &str,
-    book: &str,
-) -> Result<(), reqwest::Error> {
+pub async fn get_new_verse_from_book(api_key: &str, version: &str, book: &str) -> Result<()> {
+    // check book is in the list of books
+    let books = get_books_by_id(api_key, version).await;
+
     Ok(())
 }
 
-pub async fn get_books(api_key: &str, version: &str) -> Result<(), reqwest::Error> {
+pub async fn list_books(api_key: &str, version: &str) -> Result<()> {
+    let books = get_books_by_name(api_key, version).await;
+    for book in books.unwrap() {
+        println!("{}", book);
+    }
+    Ok(())
+}
+
+async fn get_books_by_id(api_key: &str, version: &str) -> Result<Vec<String>> {
     let client = Client::new();
     // Set up the request headers with the API api_key
     let mut headers = HeaderMap::new();
@@ -72,10 +65,36 @@ pub async fn get_books(api_key: &str, version: &str) -> Result<(), reqwest::Erro
     let resp = client.get(url).headers(headers).send().await?;
 
     let resp_body = resp.text().await?;
+    let json: serde_json::Value =
+        serde_json::from_str(&resp_body).expect("JSON was not well-formatted");
 
-    println!("Response body = {:?}", resp_body);
-    println!("body = {:?}", resp_body);
-    Ok(())
+    let json_book_data = json["data"].as_array().unwrap();
+    let mut books: Vec<String> = Vec::new();
+    for book in json_book_data {
+        books.push(book["id"].as_str().unwrap().to_string());
+    }
+    Ok(books)
+}
+
+async fn get_books_by_name(api_key: &str, version: &str) -> Result<Vec<String>> {
+    let client = Client::new();
+    // Set up the request headers with the API api_key
+    let mut headers = HeaderMap::new();
+    let url = format!("{BASE_URL}{version}/books");
+    headers.insert("api-key", HeaderValue::from_str(api_key).unwrap());
+
+    let resp = client.get(url).headers(headers).send().await?;
+
+    let resp_body = resp.text().await?;
+    let json: serde_json::Value =
+        serde_json::from_str(&resp_body).expect("JSON was not well-formatted");
+
+    let json_book_data = json["data"].as_array().unwrap();
+    let mut books: Vec<String> = Vec::new();
+    for book in json_book_data {
+        books.push(book["name"].as_str().unwrap().to_string());
+    }
+    Ok(books)
 }
 
 // private functions
@@ -95,7 +114,7 @@ fn hex_to_u64(b: &[u8]) -> Option<u64> {
     u64::from_str_radix(a, 16).ok()
 }
 
-async fn get_bibles(api_key: &str) -> Result<(), reqwest::Error> {
+async fn get_bibles(api_key: &str) -> Result<()> {
     let client = Client::new();
     let mut headers = HeaderMap::new();
     let url = BASE_URL;
@@ -112,11 +131,7 @@ async fn get_bibles(api_key: &str) -> Result<(), reqwest::Error> {
     Ok(())
 }
 
-async fn get_random_book(
-    api_key: &str,
-    version: &str,
-    rng: &mut StdRng,
-) -> Result<(String), reqwest::Error> {
+async fn get_random_book(api_key: &str, version: &str, rng: &mut StdRng) -> Result<String> {
     let client = Client::new();
     let mut headers = HeaderMap::new();
     let url = format!("{BASE_URL}{version}/books");
@@ -130,7 +145,6 @@ async fn get_random_book(
     let book_index = rng.gen_range(0..book_list.len());
 
     let book = book_list.get(book_index).unwrap();
-    println!("book = {:?}", book);
     let book = book["id"].as_str().unwrap().to_string();
 
     Ok(book)
@@ -141,18 +155,16 @@ async fn get_random_chapter(
     version: &str,
     book: &str,
     rng: &mut StdRng,
-) -> Result<(String), reqwest::Error> {
+) -> Result<String> {
     let client = Client::new();
     let mut headers = HeaderMap::new();
     let url = format!("{BASE_URL}{version}/books/{book}/chapters");
-    println!("{url}");
     headers.insert("api-key", HeaderValue::from_str(api_key).unwrap());
     let resp = client.get(url).headers(headers).send().await?;
     let resp_body = resp.text().await?;
     let json: serde_json::Value =
         serde_json::from_str(&resp_body).expect("JSON was not well-formatted");
     let chapter_list = json["data"].as_array().unwrap();
-    println!("chapter_list = {:?}", chapter_list);
     let mut chapter_index = rng.gen_range(0..chapter_list.len());
     let mut chapter = chapter_list.get(chapter_index).unwrap();
     if chapter["number"] == "intro" {
@@ -160,23 +172,18 @@ async fn get_random_chapter(
         chapter = chapter_list.get(chapter_index).unwrap();
     }
     let chapter = chapter["id"].as_str().unwrap().to_string();
-    println!("chapter = {:?}", chapter);
     Ok(chapter)
 }
 
 async fn get_random_verse(
     api_key: &str,
     version: &str,
-    book: &str,
     chapter: &str,
     rng: &mut StdRng,
-) -> Result<(), reqwest::Error> {
+) -> Result<String> {
     let client = Client::new();
     let mut headers = HeaderMap::new();
     let url = format!("{BASE_URL}{version}/chapters/{chapter}/verses");
-
-    println!("{url}");
-
     headers.insert("api-key", HeaderValue::from_str(api_key).unwrap());
     let resp = client.get(url).headers(headers).send().await?;
     let resp_body = resp.text().await?;
@@ -185,7 +192,6 @@ async fn get_random_verse(
     let verse_list = json["data"].as_array().unwrap();
     let verse_index = rng.gen_range(0..verse_list.len());
     let verse = verse_list.get(verse_index).unwrap();
-
     let verse_id = verse["id"].as_str().unwrap().to_string();
     let url = format!("{BASE_URL}{version}/verses/{verse_id}");
 
@@ -209,10 +215,8 @@ async fn get_random_verse(
     let resp_body = resp.text().await?;
     let json: serde_json::Value =
         serde_json::from_str(&resp_body).expect("JSON was not well-formatted");
-    println!("json = {:?}", json);
-
-    let verse_text = json["data"]["content"].as_str().unwrap();
+    let verse_text = json["data"]["content"].as_str().unwrap().trim();
     let verse = String::from(verse_text);
-    println!("verse = {:?}", verse.trim());
-    Ok(())
+    println!("verse = {:?}", verse);
+    Ok(verse)
 }

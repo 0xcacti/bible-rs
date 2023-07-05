@@ -1,6 +1,6 @@
 pub mod api;
 
-use api::{get_books, get_daily_verse};
+use api::{get_daily_verse, list_books};
 use figment::{
     providers::{Env, Format, Toml},
     Figment,
@@ -84,7 +84,7 @@ async fn main() {
 
     match &args.command {
         Some(Commands::List) => {
-            match get_books(
+            match list_books(
                 config.api_key.unwrap().as_str(),
                 config.bible_version.unwrap().as_str(),
             )
