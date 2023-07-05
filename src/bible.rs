@@ -1,3 +1,5 @@
+pub mod display;
+
 use anyhow::Result;
 use rand_core::SeedableRng;
 use reqwest::{
@@ -22,10 +24,15 @@ pub async fn get_daily_verse(api_key: &str, version: &str) -> Result<()> {
 
     let book = get_random_book(api_key, version, &mut rng).await;
     let chapter = get_random_chapter(api_key, version, &book.as_ref().unwrap(), &mut rng).await;
-    let verse = get_random_verse(api_key, version, &chapter.unwrap(), &mut rng)
+    let verse = get_random_verse(api_key, version, &chapter.as_ref().unwrap(), &mut rng)
         .await
         .unwrap();
-
+    display::print_verse(
+        verse.as_str(),
+        book.unwrap().as_str(),
+        &chapter.unwrap().as_str(),
+        "13",
+    );
     // get a random book
     Ok(())
 }
@@ -40,18 +47,35 @@ pub async fn get_new_verse(api_key: &str, version: &str) -> Result<()> {
     Ok(())
 }
 
-pub async fn get_new_verse_from_book(api_key: &str, version: &str, book: &str) -> Result<()> {
+pub async fn get_new_verse_from_book(api_key: &str, version: &str, book: &str) {
     // check book is in the list of books
-    let books = get_books_by_id(api_key, version).await;
-
-    Ok(())
+    let book_names = get_books_by_name(api_key, version).await;
+    let mut book_found = false;
+    let mut book_id: usize = 0;
+    for (i, b) in book_names.unwrap().iter().enumerate() {
+        if b.to_lowercase() == book.to_lowercase() {
+            book_found = true;
+            book_id = i;
+        }
+    }
+    if !book_found {
+        println!("Book not found - please check the provided book name is correct. You can get a list of books by running `bible-rs list`");
+    }
+    let book_ids = get_books_by_id(api_key, version).await;
+    let book_id = &book_ids.unwrap()[book_id];
+    let seed: u64 = rand::thread_rng().gen();
+    let mut rng = StdRng::seed_from_u64(seed);
+    let chapter = get_random_chapter(api_key, version, &book_id, &mut rng).await;
+    let verse = get_random_verse(api_key, version, &chapter.as_ref().unwrap(), &mut rng)
+        .await
+        .unwrap();
+    display::print_verse(verse.as_str(), book, &chapter.unwrap().as_str(), "13");
 }
 
 pub async fn list_books(api_key: &str, version: &str) -> Result<()> {
+    let name = get_bible_info(api_key, version).await;
     let books = get_books_by_name(api_key, version).await;
-    for book in books.unwrap() {
-        println!("{}", book);
-    }
+    display::print_book_list(books.unwrap(), name.unwrap().as_str());
     Ok(())
 }
 
@@ -74,6 +98,19 @@ async fn get_books_by_id(api_key: &str, version: &str) -> Result<Vec<String>> {
         books.push(book["id"].as_str().unwrap().to_string());
     }
     Ok(books)
+}
+
+async fn get_bible_info(api_key: &str, version: &str) -> Result<String> {
+    let client = Client::new();
+    let mut headers = HeaderMap::new();
+    let url = format!("{BASE_URL}{version}");
+    headers.insert("api-key", HeaderValue::from_str(api_key).unwrap());
+    let resp = client.get(url).headers(headers).send().await?;
+    let resp_body = resp.text().await?;
+    let json: serde_json::Value =
+        serde_json::from_str(&resp_body).expect("JSON was not well-formatted");
+    let bible_name = json["data"]["name"].as_str().unwrap();
+    Ok(bible_name.to_string())
 }
 
 async fn get_books_by_name(api_key: &str, version: &str) -> Result<Vec<String>> {
@@ -217,6 +254,5 @@ async fn get_random_verse(
         serde_json::from_str(&resp_body).expect("JSON was not well-formatted");
     let verse_text = json["data"]["content"].as_str().unwrap().trim();
     let verse = String::from(verse_text);
-    println!("verse = {:?}", verse);
     Ok(verse)
 }

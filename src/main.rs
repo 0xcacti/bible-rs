@@ -1,6 +1,6 @@
-pub mod api;
+pub mod bible;
 
-use api::{get_daily_verse, list_books};
+use bible::{get_daily_verse, get_new_verse_from_book, list_books};
 use figment::{
     providers::{Env, Format, Toml},
     Figment,
@@ -10,7 +10,7 @@ use clap::{crate_version, Parser, Subcommand};
 use serde::Deserialize;
 use std::env;
 
-use crate::api::get_new_verse;
+use crate::bible::get_new_verse;
 
 #[derive(Debug, Deserialize)]
 struct Config {
@@ -54,7 +54,7 @@ enum Commands {
     Book {
         /// The book of the Bible to get a random verse from
         #[arg(required = true)]
-        book: Option<String>,
+        book: String,
     },
 }
 
@@ -118,15 +118,12 @@ async fn main() {
             }
         }
         Some(Commands::Book { book }) => {
-            //            if let Some(book) = book {
-            //                if BOOKS.contains(&book.as_str()) {
-            //                    println!("Book: {}", book);
-            //                } else {
-            //                    println!("Book not found, please try again.  Use `bible-rs list` to see the Books of the Bible and their spellings.");
-            //                }
-            //            }
-            //
-            println!("stub book");
+            get_new_verse_from_book(
+                config.api_key.unwrap().as_str(),
+                config.bible_version.unwrap().as_str(),
+                book.as_str(),
+            )
+            .await
         }
         None => return,
     }
