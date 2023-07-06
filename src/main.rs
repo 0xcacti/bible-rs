@@ -84,38 +84,25 @@ async fn main() {
 
     match &args.command {
         Some(Commands::List) => {
-            match list_books(
+            list_books(
                 config.api_key.unwrap().as_str(),
                 config.bible_version.unwrap().as_str(),
             )
             .await
-            {
-                Ok(_) => return,
-                Err(e) => println!("Error: {}", e),
-            }
         }
         Some(Commands::Daily) => {
-            match get_daily_verse(
+            get_daily_verse(
                 config.api_key.unwrap().as_str(),
                 config.bible_version.unwrap().as_str(),
             )
             .await
-            {
-                Ok(_) => return,
-                Err(e) => println!("Error: {}", e),
-            }
         }
         Some(Commands::New) => {
-            println!("New");
-            match get_new_verse(
+            get_new_verse(
                 config.api_key.unwrap().as_str(),
                 config.bible_version.unwrap().as_str(),
             )
             .await
-            {
-                Ok(_) => return,
-                Err(e) => println!("Error: {}", e),
-            }
         }
         Some(Commands::Book { book }) => {
             get_new_verse_from_book(

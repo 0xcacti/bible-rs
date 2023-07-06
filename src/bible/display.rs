@@ -1,4 +1,6 @@
 pub fn print_verse(verse: &str, book: &str, chapter: &str, verse_number: &str) {
+    let reference = format!("{} {}:{}", book, chapter, verse_number);
+    println!("{}\n", reference);
     let verse = "For God so loved the world, that he gave his only Son, that whoever believes in him should not perish but have eternal life.";
     let reference = "John 3:16";
 

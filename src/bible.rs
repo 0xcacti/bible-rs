@@ -18,33 +18,45 @@ const BASE_URL: &str = "https://api.scripture.api.bible/v1/bibles/";
 // define public functions
 
 /// fetch a daily random verse
-pub async fn get_daily_verse(api_key: &str, version: &str) -> Result<()> {
+pub async fn get_daily_verse(api_key: &str, version: &str) {
     let seed = get_rng_seed_from_date();
     let mut rng = StdRng::seed_from_u64(seed);
 
     let book = get_random_book(api_key, version, &mut rng).await;
     let chapter = get_random_chapter(api_key, version, &book.as_ref().unwrap(), &mut rng).await;
-    let verse = get_random_verse(api_key, version, &chapter.as_ref().unwrap(), &mut rng)
-        .await
-        .unwrap();
+    let (verse, verse_id) =
+        get_random_verse(api_key, version, &chapter.as_ref().unwrap(), &mut rng)
+            .await
+            .unwrap();
+    let book_and_chapter_id = chapter.as_ref().unwrap().split_once(".").unwrap();
     display::print_verse(
         verse.as_str(),
-        book.unwrap().as_str(),
-        &chapter.unwrap().as_str(),
-        "13",
+        book_id_to_name(api_key, version, book_and_chapter_id.0)
+            .await
+            .unwrap()
+            .as_str(),
+        book_and_chapter_id.1,
+        verse_id.as_str(),
     );
-    // get a random book
-    Ok(())
 }
 
-pub async fn get_new_verse(api_key: &str, version: &str) -> Result<()> {
+pub async fn get_new_verse(api_key: &str, version: &str) {
     let seed: u64 = rand::thread_rng().gen();
     let mut rng = StdRng::seed_from_u64(seed);
 
     let book = get_random_book(api_key, version, &mut rng).await;
     let chapter = get_random_chapter(api_key, version, &book.as_ref().unwrap(), &mut rng).await;
-    let verse = get_random_verse(api_key, version, &chapter.unwrap(), &mut rng).await?;
-    Ok(())
+    let (verse, verse_id) =
+        get_random_verse(api_key, version, &chapter.as_ref().unwrap(), &mut rng)
+            .await
+            .unwrap();
+
+    display::print_verse(
+        verse.as_str(),
+        book.unwrap().as_str(),
+        chapter.unwrap().as_str(),
+        verse_id.as_str(),
+    );
 }
 
 pub async fn get_new_verse_from_book(api_key: &str, version: &str, book: &str) {
@@ -66,17 +78,22 @@ pub async fn get_new_verse_from_book(api_key: &str, version: &str, book: &str) {
     let seed: u64 = rand::thread_rng().gen();
     let mut rng = StdRng::seed_from_u64(seed);
     let chapter = get_random_chapter(api_key, version, &book_id, &mut rng).await;
-    let verse = get_random_verse(api_key, version, &chapter.as_ref().unwrap(), &mut rng)
-        .await
-        .unwrap();
-    display::print_verse(verse.as_str(), book, &chapter.unwrap().as_str(), "13");
+    let (verse, verse_id) =
+        get_random_verse(api_key, version, &chapter.as_ref().unwrap(), &mut rng)
+            .await
+            .unwrap();
+    display::print_verse(
+        verse.as_str(),
+        book,
+        chapter.unwrap().as_str(),
+        verse_id.as_str(),
+    );
 }
 
-pub async fn list_books(api_key: &str, version: &str) -> Result<()> {
+pub async fn list_books(api_key: &str, version: &str) {
     let name = get_bible_info(api_key, version).await;
     let books = get_books_by_name(api_key, version).await;
     display::print_book_list(books.unwrap(), name.unwrap().as_str());
-    Ok(())
 }
 
 async fn get_books_by_id(api_key: &str, version: &str) -> Result<Vec<String>> {
@@ -132,6 +149,19 @@ async fn get_books_by_name(api_key: &str, version: &str) -> Result<Vec<String>> 
         books.push(book["name"].as_str().unwrap().to_string());
     }
     Ok(books)
+}
+
+async fn book_id_to_name(api_key: &str, version: &str, book_id: &str) -> Result<String> {
+    let client = Client::new();
+    let mut headers = HeaderMap::new();
+    let url = format!("{BASE_URL}{version}/books/{book_id}");
+    headers.insert("api-key", HeaderValue::from_str(api_key).unwrap());
+    let resp = client.get(url).headers(headers).send().await?;
+    let resp_body = resp.text().await?;
+    let json: serde_json::Value =
+        serde_json::from_str(&resp_body).expect("JSON was not well-formatted");
+    let book_name = json["data"]["name"].as_str().unwrap();
+    Ok(book_name.to_string())
 }
 
 // private functions
@@ -217,7 +247,7 @@ async fn get_random_verse(
     version: &str,
     chapter: &str,
     rng: &mut StdRng,
-) -> Result<String> {
+) -> Result<(String, String)> {
     let client = Client::new();
     let mut headers = HeaderMap::new();
     let url = format!("{BASE_URL}{version}/chapters/{chapter}/verses");
@@ -254,5 +284,5 @@ async fn get_random_verse(
         serde_json::from_str(&resp_body).expect("JSON was not well-formatted");
     let verse_text = json["data"]["content"].as_str().unwrap().trim();
     let verse = String::from(verse_text);
-    Ok(verse)
+    Ok((verse, verse_index.to_string()))
 }
