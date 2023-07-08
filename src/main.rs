@@ -1,31 +1,13 @@
-pub mod bible;
+use bible_rs::{get_new_verse, Config};
 
-use bible::{get_daily_verse, get_new_verse_from_book, list_books};
+use bible_rs::{get_daily_verse, get_new_verse_from_book, list_books};
 use figment::{
     providers::{Env, Format, Toml},
     Figment,
 };
 
 use clap::{crate_version, Parser, Subcommand};
-use serde::Deserialize;
-use std::env;
-
-use crate::bible::get_new_verse;
-
-#[derive(Debug, Deserialize)]
-struct Config {
-    api_key: Option<String>,
-    bible_version: Option<String>,
-}
-
-impl Default for Config {
-    fn default() -> Config {
-        Config {
-            api_key: Some("de4e12af7f28f599-02".to_string()),
-            bible_version: Some("b9f970d519f43f80d3d1818a74cb674b".to_string()),
-        }
-    }
-}
+use std::{env, process};
 
 /// bible-rs is a command line tool for getting a random verse from the Bible.
 #[derive(Debug, Parser)]
@@ -67,50 +49,58 @@ async fn main() {
         .unwrap();
 
     let args = BibleParser::parse();
+
     match args.api_key {
         Some(api_key) => config.api_key = Some(api_key),
         None => match config.api_key {
             Some(api_key) => config.api_key = Some(api_key),
-            None => config.api_key = Config::default().bible_version,
+            None => {
+                eprintln!("No API key provided. Please provide an API key using the --api-key flag, 
+                          setting api_key in the bible-rs.toml file, or by setting the BIBLE_RS_API_KEY environment variable.");
+            }
         },
     }
     match args.bible_version {
         Some(bible_version) => config.bible_version = Some(bible_version),
         None => match config.bible_version {
             Some(bible_version) => config.bible_version = Some(bible_version),
-            None => config.bible_version = Config::default().bible_version,
+            None => {
+                eprintln!("No Bible version provided. Please provide a Bible version using the --bible-version flag, 
+                          setting bible_version in the bible-rs.toml file, or by setting the BIBLE_RS_BIBLE_VERSION environment variable.");
+            }
         },
     }
 
     match &args.command {
-        Some(Commands::List) => {
-            list_books(
-                config.api_key.unwrap().as_str(),
-                config.bible_version.unwrap().as_str(),
-            )
-            .await
-        }
-        Some(Commands::Daily) => {
-            get_daily_verse(
-                config.api_key.unwrap().as_str(),
-                config.bible_version.unwrap().as_str(),
-            )
-            .await
-        }
-        Some(Commands::New) => {
-            get_new_verse(
-                config.api_key.unwrap().as_str(),
-                config.bible_version.unwrap().as_str(),
-            )
-            .await
-        }
+        Some(Commands::List) => match list_books(&config).await {
+            Ok(_) => process::exit(0),
+            Err(e) => {
+                eprintln!("Error: {}", e);
+                process::exit(1);
+            }
+        },
+        Some(Commands::Daily) => match get_daily_verse(&config).await {
+            Ok(_) => process::exit(0),
+            Err(e) => {
+                eprintln!("Error: {}", e);
+                process::exit(1);
+            }
+        },
+        Some(Commands::New) => match get_new_verse(&config).await {
+            Ok(_) => process::exit(0),
+            Err(e) => {
+                eprintln!("Error: {}", e);
+                process::exit(1);
+            }
+        },
         Some(Commands::Book { book }) => {
-            get_new_verse_from_book(
-                config.api_key.unwrap().as_str(),
-                config.bible_version.unwrap().as_str(),
-                book.as_str(),
-            )
-            .await
+            match get_new_verse_from_book(&config, book.as_str()).await {
+                Ok(_) => process::exit(0),
+                Err(e) => {
+                    eprintln!("Error: {}", e);
+                    process::exit(1);
+                }
+            }
         }
         None => return,
     }
