@@ -2,6 +2,7 @@ pub mod display;
 
 use anyhow::Result;
 use chrono::Local;
+use display::Verse;
 use rand::{rngs::StdRng, Rng};
 use rand_core::SeedableRng;
 use reqwest::{
@@ -40,31 +41,29 @@ const BASE_URL: &str = "https://api.scripture.api.bible/v1/bibles/";
 // define public functions
 
 /// fetch a daily random verse
-pub async fn get_daily_verse(config: &Config) -> Result<()> {
-    let seed = get_rng_seed_from_date();
-    let mut rng = StdRng::seed_from_u64(seed);
+pub async fn get_daily_verse(config: &Config) -> Result<Verse> {
+    let mut rng = get_rng_from_date();
 
     let book = get_random_book(config, &mut rng).await?;
     let chapter = get_random_chapter(config, book.as_ref(), &mut rng).await?;
     let (verse_text, verse_id) = get_random_verse(config, chapter.as_ref(), &mut rng).await?;
 
     let verse = display::Verse::new(verse_text, verse_id);
-    println!("{}", verse);
-    Ok(())
+    Ok(verse)
 }
 
-pub async fn get_new_verse(config: &Config) -> Result<()> {
-    let seed: u64 = rand::thread_rng().gen();
-    let mut rng = StdRng::seed_from_u64(seed);
+pub async fn get_new_verse(config: &Config) -> Result<Verse> {
+    let mut rng = get_rng();
 
     let book = get_random_book(&config, &mut rng).await?;
     let chapter = get_random_chapter(&config, book.as_ref(), &mut rng).await?;
-    let verse = get_random_verse(config, chapter.as_ref(), &mut rng).await?;
+    let (verse, verse_id) = get_random_verse(config, chapter.as_ref(), &mut rng).await?;
+    let verse = display::Verse::new(verse, verse_id);
 
-    Ok(())
+    Ok(verse)
 }
 
-pub async fn get_new_verse_from_book(config: &Config, book: &str) -> Result<()> {
+pub async fn get_new_verse_from_book(config: &Config, book: &str) -> Result<Verse> {
     // check book is in the list of books
     let book_names = get_books_by_name(config).await;
     let mut book_found = false;
@@ -86,7 +85,8 @@ pub async fn get_new_verse_from_book(config: &Config, book: &str) -> Result<()> 
     let (verse, verse_id) = get_random_verse(config, &chapter.as_ref().unwrap(), &mut rng)
         .await
         .unwrap();
-    Ok(())
+    let verse = display::Verse::new(verse, verse_id);
+    Ok(verse)
 }
 
 pub async fn list_books(config: &Config) -> Result<()> {
@@ -175,7 +175,7 @@ async fn book_id_to_name(config: &Config, book_id: &str) -> Result<String> {
 }
 
 // private functions
-fn get_rng_seed_from_date() -> u64 {
+fn get_rng_from_date() -> StdRng {
     // get the current date
     // hash the date string
     // truncate the hash to 8
@@ -183,7 +183,13 @@ fn get_rng_seed_from_date() -> u64 {
     let date = Local::now().naive_local().date();
     let date_hash = sha256::digest(date.to_string().as_bytes());
     let truncated_hash = &date_hash[0..16];
-    hex_to_u64(truncated_hash.as_bytes()).unwrap()
+    let seed = hex_to_u64(truncated_hash.as_bytes()).unwrap();
+    StdRng::seed_from_u64(seed)
+}
+
+fn get_rng() -> StdRng {
+    let seed: u64 = rand::thread_rng().gen();
+    StdRng::seed_from_u64(seed)
 }
 
 fn hex_to_u64(b: &[u8]) -> Option<u64> {

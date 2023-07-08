@@ -80,14 +80,14 @@ async fn main() {
             }
         },
         Some(Commands::Daily) => match get_daily_verse(&config).await {
-            Ok(_) => process::exit(0),
+            Ok(verse) => println!("{}", verse),
             Err(e) => {
                 eprintln!("Error: {}", e);
                 process::exit(1);
             }
         },
         Some(Commands::New) => match get_new_verse(&config).await {
-            Ok(_) => process::exit(0),
+            Ok(verse) => println!("{}", verse),
             Err(e) => {
                 eprintln!("Error: {}", e);
                 process::exit(1);
@@ -95,7 +95,7 @@ async fn main() {
         },
         Some(Commands::Book { book }) => {
             match get_new_verse_from_book(&config, book.as_str()).await {
-                Ok(_) => process::exit(0),
+                Ok(verse) => println!("{}", verse),
                 Err(e) => {
                     eprintln!("Error: {}", e);
                     process::exit(1);

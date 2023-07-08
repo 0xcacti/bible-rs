@@ -8,4 +8,9 @@ another setting that lets you get a verse from a specified book as well.
 
 
 
-
+there are many things still to do but here is a short list 
+restore all functionality 
+find an elegant solution to print full book name 
+find an elegant name for submodule 
+further test printing when verse length > width of terminal
+write testing 
