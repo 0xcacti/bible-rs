@@ -7,6 +7,17 @@ pub struct Verse {
     pub verse: String,
 }
 
+pub struct Books {
+    pub version: String,
+    pub books: Vec<String>,
+}
+
+impl Books {
+    pub fn new(version: String, books: Vec<String>) -> Books {
+        Books { version, books }
+    }
+}
+
 impl Verse {
     pub fn new(verse: String, verse_id: String) -> Verse {
         let verse_identifiers = verse_id.split(".").collect::<Vec<&str>>();
@@ -44,11 +55,16 @@ impl fmt::Display for Verse {
     }
 }
 
-pub fn print_book_list(books: Vec<String>, version: &str) {
-    println!("{}", version);
-    let divider = "=".repeat(version.len());
-    println!("{}", divider);
-    for book in books {
-        println!("{}", book);
+impl fmt::Display for Books {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut output = String::new();
+        output.push_str(&self.version);
+        output.push_str("\n");
+        output.push_str(&"=".repeat(self.version.len()));
+        for book in &self.books {
+            output.push_str("\n");
+            output.push_str(book);
+        }
+        write!(f, "{}", output)
     }
 }

@@ -73,7 +73,7 @@ async fn main() {
 
     match &args.command {
         Some(Commands::List) => match list_books(&config).await {
-            Ok(_) => process::exit(0),
+            Ok(books) => println!("{}", books),
             Err(e) => {
                 eprintln!("Error: {}", e);
                 process::exit(1);

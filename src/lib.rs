@@ -2,7 +2,7 @@ pub mod display;
 
 use anyhow::Result;
 use chrono::Local;
-use display::Verse;
+use display::{Books, Verse};
 use rand::{rngs::StdRng, Rng};
 use rand_core::SeedableRng;
 use reqwest::{
@@ -89,11 +89,11 @@ pub async fn get_new_verse_from_book(config: &Config, book: &str) -> Result<Vers
     Ok(verse)
 }
 
-pub async fn list_books(config: &Config) -> Result<()> {
-    let name = get_bible_info(config).await;
-    let books = get_books_by_name(config).await;
-    display::print_book_list(books.unwrap(), name.unwrap().as_str());
-    Ok(())
+pub async fn list_books(config: &Config) -> Result<Books> {
+    let name = get_bible_info(config).await?;
+    let books = get_books_by_name(config).await?;
+    let book_info = Books::new(name, books);
+    Ok(book_info)
 }
 
 async fn get_books_by_id(config: &Config) -> Result<Vec<String>> {
