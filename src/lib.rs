@@ -299,7 +299,7 @@ async fn get_random_chapter(config: &Config, book: &str, rng: &mut StdRng) -> Re
     let resp_body = resp.text().await?;
     let json: serde_json::Value =
         serde_json::from_str(&resp_body).expect("JSON was not well-formatted");
-    let chapter_list = json["data"].as_array().unwrap();
+    let chapter_list = json["data"].as_array().unwrap_or_else();
     let mut chapter_index = rng.gen_range(0..chapter_list.len());
     let mut chapter = chapter_list.get(chapter_index).unwrap();
     if chapter["number"] == "intro" {
