@@ -49,15 +49,12 @@ pub async fn get_daily_verse(config: &Config) -> Result<Verse> {
     let (verse, verse_id) = get_random_verse(config, chapter.as_ref(), &mut rng).await?;
     let verse_identifiers = verse_id.split(".").collect::<Vec<&str>>();
     let book_name = book_id_to_name(config, verse_identifiers[0]).await?;
-    let verse = {
-        let number = verse_identifiers[2];
-        Verse {
-            book: book_name,
-            verse_identifiers[1].to_string(),
-            verse,
-            number.to_string(),
-        }
-    };
+    let verse = Verse::new(
+        verse,
+        book_name,
+        verse_identifiers[1].to_string(),
+        verse_identifiers[2].to_string(),
+    );
     Ok(verse)
 }
 
@@ -69,18 +66,12 @@ pub async fn get_new_verse(config: &Config) -> Result<Verse> {
     let (verse, verse_id) = get_random_verse(config, chapter.as_ref(), &mut rng).await?;
     let verse_identifiers = verse_id.split(".").collect::<Vec<&str>>();
     let book_name = book_id_to_name(config, verse_identifiers[0]).await?;
-
-    let verse = {
-        let chapter = verse_identifiers[1];
-        let number = verse_identifiers[2];
-        Verse {
-            book: book_name,
-            chapter,
-            number,
-            verse,
-        }
-    };
-
+    let verse = Verse::new(
+        verse,
+        book_name,
+        verse_identifiers[1].to_string(),
+        verse_identifiers[2].to_string(),
+    );
     Ok(verse)
 }
 
@@ -106,12 +97,13 @@ pub async fn get_new_verse_from_book(config: &Config, book: &str) -> Result<Vers
     let (verse, verse_id) = get_random_verse(config, &chapter.as_ref().unwrap(), &mut rng)
         .await
         .unwrap();
-    let verse = Verse {
-        book: verse_id,
-        chapter,
-        number,
-        verse: verse,
-    };
+    let verse_identifiers = verse_id.split(".").collect::<Vec<&str>>();
+    let verse = Verse::new(
+        verse,
+        book.to_string(),
+        verse_identifiers[1].to_string(),
+        verse_identifiers[2].to_string(),
+    );
     Ok(verse)
 }
 

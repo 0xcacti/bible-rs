@@ -41,7 +41,7 @@ impl fmt::Display for Verse {
         let mut padding = 0;
         if width < 10 {
         } else if width < self.verse.len() {
-            padding = width - reference.len();
+            padding = width;
         } else {
             padding = self.verse.len();
         }
