@@ -46,9 +46,18 @@ pub async fn get_daily_verse(config: &Config) -> Result<Verse> {
 
     let book = get_random_book(config, &mut rng).await?;
     let chapter = get_random_chapter(config, book.as_ref(), &mut rng).await?;
-    let (verse_text, verse_id) = get_random_verse(config, chapter.as_ref(), &mut rng).await?;
-
-    let verse = display::Verse::new(verse_text, verse_id);
+    let (verse, verse_id) = get_random_verse(config, chapter.as_ref(), &mut rng).await?;
+    let verse_identifiers = verse_id.split(".").collect::<Vec<&str>>();
+    let book_name = book_id_to_name(config, verse_identifiers[0]).await?;
+    let verse = {
+        let number = verse_identifiers[2];
+        Verse {
+            book: book_name,
+            verse_identifiers[1].to_string(),
+            verse,
+            number.to_string(),
+        }
+    };
     Ok(verse)
 }
 
@@ -58,7 +67,19 @@ pub async fn get_new_verse(config: &Config) -> Result<Verse> {
     let book = get_random_book(&config, &mut rng).await?;
     let chapter = get_random_chapter(&config, book.as_ref(), &mut rng).await?;
     let (verse, verse_id) = get_random_verse(config, chapter.as_ref(), &mut rng).await?;
-    let verse = display::Verse::new(verse, verse_id);
+    let verse_identifiers = verse_id.split(".").collect::<Vec<&str>>();
+    let book_name = book_id_to_name(config, verse_identifiers[0]).await?;
+
+    let verse = {
+        let chapter = verse_identifiers[1];
+        let number = verse_identifiers[2];
+        Verse {
+            book: book_name,
+            chapter,
+            number,
+            verse,
+        }
+    };
 
     Ok(verse)
 }
@@ -85,7 +106,12 @@ pub async fn get_new_verse_from_book(config: &Config, book: &str) -> Result<Vers
     let (verse, verse_id) = get_random_verse(config, &chapter.as_ref().unwrap(), &mut rng)
         .await
         .unwrap();
-    let verse = display::Verse::new(verse, verse_id);
+    let verse = Verse {
+        book: verse_id,
+        chapter,
+        number,
+        verse: verse,
+    };
     Ok(verse)
 }
 
@@ -176,10 +202,6 @@ async fn book_id_to_name(config: &Config, book_id: &str) -> Result<String> {
 
 // private functions
 fn get_rng_from_date() -> StdRng {
-    // get the current date
-    // hash the date string
-    // truncate the hash to 8
-    // convert the truncated hash to a u64
     let date = Local::now().naive_local().date();
     let date_hash = sha256::digest(date.to_string().as_bytes());
     let truncated_hash = &date_hash[0..16];
@@ -299,7 +321,7 @@ async fn get_random_chapter(config: &Config, book: &str, rng: &mut StdRng) -> Re
     let resp_body = resp.text().await?;
     let json: serde_json::Value =
         serde_json::from_str(&resp_body).expect("JSON was not well-formatted");
-    let chapter_list = json["data"].as_array().unwrap_or_else();
+    let chapter_list = json["data"].as_array().unwrap();
     let mut chapter_index = rng.gen_range(0..chapter_list.len());
     let mut chapter = chapter_list.get(chapter_index).unwrap();
     if chapter["number"] == "intro" {

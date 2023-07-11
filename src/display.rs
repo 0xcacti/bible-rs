@@ -19,12 +19,12 @@ impl Books {
 }
 
 impl Verse {
-    pub fn new(verse: String, verse_id: String) -> Verse {
-        let verse_identifiers = verse_id.split(".").collect::<Vec<&str>>();
+    /// Creates a new [`Verse`].
+    pub fn new(verse: String, book: String, chapter: String, number: String) -> Verse {
         Verse {
-            book: verse_identifiers[0].to_string(),
-            chapter: verse_identifiers[1].to_string(),
-            number: verse_identifiers[2].to_string(),
+            book,
+            chapter,
+            number,
             verse,
         }
     }
