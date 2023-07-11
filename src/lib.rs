@@ -11,6 +11,8 @@ use reqwest::{
 };
 use serde::Deserialize;
 
+use crate::display::Bible;
+
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub api_key: Option<String>,
@@ -38,8 +40,6 @@ impl Config {
 
 const BASE_URL: &str = "https://api.scripture.api.bible/v1/bibles/";
 
-// define public functions
-
 /// fetch a daily random verse
 pub async fn get_daily_verse(config: &Config) -> Result<Verse> {
     let mut rng = get_rng_from_date();
@@ -58,6 +58,7 @@ pub async fn get_daily_verse(config: &Config) -> Result<Verse> {
     Ok(verse)
 }
 
+/// fetch a new random verse
 pub async fn get_new_verse(config: &Config) -> Result<Verse> {
     let mut rng = get_rng();
 
@@ -75,6 +76,7 @@ pub async fn get_new_verse(config: &Config) -> Result<Verse> {
     Ok(verse)
 }
 
+/// fetch a new random verse from a specific book of the Bible
 pub async fn get_new_verse_from_book(config: &Config, book: &str) -> Result<Verse> {
     // check book is in the list of books
     let book_names = get_books_by_name(config).await;
@@ -107,11 +109,38 @@ pub async fn get_new_verse_from_book(config: &Config, book: &str) -> Result<Vers
     Ok(verse)
 }
 
+/// list books for the current Bible version
 pub async fn list_books(config: &Config) -> Result<Books> {
     let name = get_bible_info(config).await?;
     let books = get_books_by_name(config).await?;
     let book_info = Books::new(name, books);
     Ok(book_info)
+}
+
+/// get the name of the current Bible version
+pub async fn get_bibles(config: &Config) -> Result<Vec<Bible>> {
+    let client = Client::new();
+    let mut headers = HeaderMap::new();
+    let url = BASE_URL[..BASE_URL.len() - 1].to_string();
+    headers.insert("api-key", HeaderValue::from_str(config.api_key()).unwrap());
+
+    let resp = client.get(url).headers(headers).send().await?;
+
+    let resp_body = resp.text().await?;
+    let json: serde_json::Value =
+        serde_json::from_str(&resp_body).expect("JSON was not well-formatted");
+    let json_bibles = json["data"].as_array().unwrap();
+    let mut bibles: Vec<Bible> = Vec::new();
+    for bible in json_bibles {
+        let name = bible["name"].as_str().unwrap().to_string();
+        let id = bible["id"].as_str().unwrap().to_string();
+        let description = bible["description"].as_str().unwrap_or("").to_string();
+        let language = bible["language"]["name"].as_str().unwrap_or("").to_string();
+        let bible = Bible::new(name, id, description, language);
+        bibles.push(bible);
+    }
+
+    Ok(bibles)
 }
 
 async fn get_books_by_id(config: &Config) -> Result<Vec<String>> {
@@ -209,23 +238,6 @@ fn get_rng() -> StdRng {
 fn hex_to_u64(b: &[u8]) -> Option<u64> {
     let a = std::str::from_utf8(b).ok()?;
     u64::from_str_radix(a, 16).ok()
-}
-
-async fn get_bibles(api_key: &str) -> Result<()> {
-    let client = Client::new();
-    let mut headers = HeaderMap::new();
-    let url = BASE_URL;
-
-    headers.insert("api-key", HeaderValue::from_str(api_key).unwrap());
-
-    let resp = client.get(url).headers(headers).send().await?;
-
-    let resp_body = resp.text().await?;
-
-    println!("Response body = {:?}", resp_body);
-    println!("body = {:?}", resp_body);
-
-    Ok(())
 }
 
 async fn get_random_verse(

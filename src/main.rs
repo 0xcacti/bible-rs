@@ -1,6 +1,6 @@
-use bible_rs::{get_new_verse, Config};
-
-use bible_rs::{get_daily_verse, get_new_verse_from_book, list_books};
+use bible_rs::{
+    get_bibles, get_daily_verse, get_new_verse, get_new_verse_from_book, list_books, Config,
+};
 use figment::{
     providers::{Env, Format, Toml},
     Figment,
@@ -38,6 +38,8 @@ enum Commands {
         #[arg(required = true)]
         book: String,
     },
+    /// Get available Bible versions
+    Bibles,
 }
 
 #[tokio::main]
@@ -50,6 +52,7 @@ async fn main() {
 
     let args = BibleParser::parse();
 
+    // Check for API key
     match args.api_key {
         Some(api_key) => config.api_key = Some(api_key),
         None => match config.api_key {
@@ -60,6 +63,7 @@ async fn main() {
             }
         },
     }
+    // Check for Bible version
     match args.bible_version {
         Some(bible_version) => config.bible_version = Some(bible_version),
         None => match config.bible_version {
@@ -71,6 +75,7 @@ async fn main() {
         },
     }
 
+    // handle commands
     match &args.command {
         Some(Commands::List) => match list_books(&config).await {
             Ok(books) => println!("{}", books),
@@ -102,6 +107,17 @@ async fn main() {
                 }
             }
         }
+        Some(Commands::Bibles) => match get_bibles(&config).await {
+            Ok(bibles) => {
+                for bible in bibles {
+                    println!("{}", bible);
+                }
+            }
+            Err(e) => {
+                eprintln!("Error: {}", e);
+                process::exit(1);
+            }
+        },
         None => return,
     }
 }
