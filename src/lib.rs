@@ -2,16 +2,11 @@ pub mod display;
 pub mod utils;
 
 use anyhow::Result;
-use display::{Books, Verse};
+use display::{Bible, Books, Verse};
 use rand::{rngs::StdRng, Rng};
-use reqwest::{
-    header::{HeaderMap, HeaderValue, ACCEPT},
-    Client,
-};
+use reqwest::header::{HeaderValue, ACCEPT};
 use serde::Deserialize;
 use utils::{get_client_and_headers, get_rng, get_rng_from_date};
-
-use crate::display::Bible;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -222,27 +217,15 @@ async fn get_random_verse(
     chapter: &str,
     rng: &mut StdRng,
 ) -> Result<(String, String)> {
-    let url = format!(
-        "{BASE_URL}{version}/chapters/{chapter}/verses",
-        version = config.bible_version()
-    );
-    let (client, headers) = get_client_and_headers(config.api_key())?;
-    let resp = client
-        .get(url)
-        .headers(headers)
-        .send()
-        .await?
-        .text()
-        .await?;
-    let json: serde_json::Value = serde_json::from_str(&resp).expect("JSON was not well-formatted");
-    let verse_list = json["data"].as_array().unwrap();
-    let verse_index = rng.gen_range(0..verse_list.len());
-    let verse = verse_list.get(verse_index).unwrap();
-    let verse_id = verse["id"].as_str().unwrap().to_string();
+    // get a random verse_id from the chapter
+    let verse_id = get_random_verse_id(config, chapter, rng).await?;
+
+    // get the verse text
     let url = format!(
         "{BASE_URL}{version}/verses/{verse_id}",
         version = config.bible_version()
     );
+
     let (client, mut headers) = get_client_and_headers(config.api_key())?;
     headers.insert(ACCEPT, HeaderValue::from_static("application/json")); // Adding the Accept header
     let resp = client
@@ -261,10 +244,32 @@ async fn get_random_verse(
         .await?
         .text()
         .await?;
+
     let json: serde_json::Value = serde_json::from_str(&resp).expect("JSON was not well-formatted");
     let verse_text = json["data"]["content"].as_str().unwrap().trim();
     let verse = String::from(verse_text);
     Ok((verse, verse_id))
+}
+
+async fn get_random_verse_id(config: &Config, chapter: &str, rng: &mut StdRng) -> Result<String> {
+    let url = format!(
+        "{BASE_URL}{version}/chapters/{chapter}/verses",
+        version = config.bible_version()
+    );
+    let (client, headers) = get_client_and_headers(config.api_key())?;
+    let resp = client
+        .get(url)
+        .headers(headers)
+        .send()
+        .await?
+        .text()
+        .await?;
+    let json: serde_json::Value = serde_json::from_str(&resp).expect("JSON was not well-formatted");
+    let verse_list = json["data"].as_array().unwrap();
+    let verse_index = rng.gen_range(0..verse_list.len());
+    let verse = verse_list.get(verse_index).unwrap();
+    let verse_id = verse["id"].as_str().unwrap().to_string();
+    Ok(verse_id)
 }
 
 async fn get_random_book(config: &Config, rng: &mut StdRng) -> Result<String> {
