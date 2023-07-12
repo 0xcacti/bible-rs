@@ -342,11 +342,16 @@ async fn get_random_book(config: &Config, rng: &mut StdRng) -> Result<String> {
         .await?;
 
     let json: serde_json::Value = serde_json::from_str(&resp).context(JSONError::ErrorWithBooks)?;
-    let book_list = json["data"].as_array().unwrap();
+    let book_list = json["data"].as_array().context(JSONError::ErrorWithBooks)?;
     let book_index = rng.gen_range(0..book_list.len());
 
-    let book = book_list.get(book_index).unwrap();
-    let book = book["id"].as_str().unwrap().to_string();
+    let book = book_list
+        .get(book_index)
+        .context(JSONError::ErrorWithBooks)?;
+    let book = book["id"]
+        .as_str()
+        .context(JSONError::ErrorWithBooks)?
+        .to_string();
 
     Ok(book)
 }
@@ -371,7 +376,10 @@ async fn get_random_chapter(config: &Config, book: &str, rng: &mut StdRng) -> Re
         .as_array()
         .context(JSONError::ErrorWithChapters)?;
     let mut chapter_index = rng.gen_range(0..chapter_list.len());
-    let mut chapter = chapter_list.get(chapter_index).unwrap();
+    let mut chapter = chapter_list
+        .get(chapter_index)
+        .context(JSONError::ErrorWithChapters)?;
+
     if chapter["number"] == "intro" {
         chapter_index = chapter_index + 1;
         chapter = chapter_list
