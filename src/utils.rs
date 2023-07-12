@@ -7,9 +7,13 @@ use reqwest::{
     Client,
 };
 
-pub fn get_rng_from_date() -> StdRng {
+pub fn get_date() -> String {
     let date = Local::now().naive_local().date();
-    let date_hash = sha256::digest(date.to_string().as_bytes());
+    date.to_string()
+}
+
+pub fn get_rng_from_date(date: String) -> StdRng {
+    let date_hash = sha256::digest(date.as_bytes());
     let truncated_hash = &date_hash[0..16];
     let seed = hex_to_u64(truncated_hash.as_bytes()).unwrap();
     StdRng::seed_from_u64(seed)

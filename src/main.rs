@@ -30,7 +30,7 @@ enum Commands {
     List,
     /// Get the daily random verse from the Bible
     Daily,
-    /// get a new random verse from the Bible
+    /// Get a new random verse from the Bible
     New,
     /// Get a random verse from a specific book of the Bible
     Book {

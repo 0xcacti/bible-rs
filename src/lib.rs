@@ -1,12 +1,13 @@
 pub mod display;
 pub mod utils;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use display::{Bible, Books, Verse};
 use rand::{rngs::StdRng, Rng};
 use reqwest::header::{HeaderValue, ACCEPT};
 use serde::Deserialize;
-use utils::{get_client_and_headers, get_rng, get_rng_from_date};
+use thiserror::Error;
+use utils::{get_client_and_headers, get_date, get_rng, get_rng_from_date};
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -23,19 +24,39 @@ impl Config {
     }
 
     pub fn api_key(&self) -> &str {
-        self.api_key.as_ref().unwrap()
+        self.api_key.as_ref().expect("api_key not set")
     }
 
     pub fn bible_version(&self) -> &str {
-        self.bible_version.as_ref().unwrap()
+        self.bible_version.as_ref().expect("bible_version not set")
     }
+}
+
+#[derive(Error, Debug)]
+pub enum JSONError {
+    #[error("Error parsing available Bibles json data")]
+    ErrorWithBibles,
+    #[error("Error parsing available Books json data")]
+    ErrorWithBooks,
+    #[error("Error parsing available Chapters json data")]
+    ErrorWithChapters,
+    #[error("Error parsing available Verses json data")]
+    ErrorWithVerses,
+    #[error("Error parsing Bible version json data")]
+    ErrorWithBibleVersion,
+}
+
+#[derive(Error, Debug)]
+pub enum BibleError {
+    #[error("Invalid book")]
+    InvalidBook,
 }
 
 const BASE_URL: &str = "https://api.scripture.api.bible/v1/bibles/";
 
 /// fetch a daily random verse
 pub async fn get_daily_verse(config: &Config) -> Result<Verse> {
-    let mut rng = get_rng_from_date();
+    let mut rng = get_rng_from_date(get_date());
     let book = get_random_book(config, &mut rng).await?;
     let chapter = get_random_chapter(config, book.as_ref(), &mut rng).await?;
     let (verse, verse_id) = get_random_verse(config, chapter.as_ref(), &mut rng).await?;
@@ -70,25 +91,23 @@ pub async fn get_new_verse(config: &Config) -> Result<Verse> {
 /// fetch a new random verse from a specific book of the Bible
 pub async fn get_new_verse_from_book(config: &Config, book: &str) -> Result<Verse> {
     // check book is in the list of books
-    let book_names = get_books_by_name(config).await;
+    let book_names = get_books_by_name(config).await?;
     let mut book_found = false;
     let mut book_id: usize = 0;
-    for (i, b) in book_names.unwrap().iter().enumerate() {
+    for (i, b) in book_names.iter().enumerate() {
         if b.to_lowercase() == book.to_lowercase() {
             book_found = true;
             book_id = i;
         }
     }
     if !book_found {
-        println!("Book not found - please check the provided book name is correct. You can get a list of books by running `bible-rs list`");
+        return Err(BibleError::InvalidBook.into());
     }
-    let book_ids = get_books_by_id(config).await;
-    let book_id = &book_ids.unwrap()[book_id];
+    let book_ids = get_books_by_id(config).await?;
+    let book_id = &book_ids[book_id];
     let mut rng = get_rng();
-    let chapter = get_random_chapter(config, &book_id, &mut rng).await;
-    let (verse, verse_id) = get_random_verse(config, &chapter.as_ref().unwrap(), &mut rng)
-        .await
-        .unwrap();
+    let chapter = get_random_chapter(config, book_id, &mut rng).await?;
+    let (verse, verse_id) = get_random_verse(config, chapter.as_ref(), &mut rng).await?;
     let verse_identifiers = verse_id.split(".").collect::<Vec<&str>>();
     let verse = Verse::new(
         verse,
@@ -111,16 +130,25 @@ pub async fn list_books(config: &Config) -> Result<Books> {
 pub async fn get_bibles(config: &Config) -> Result<Vec<Bible>> {
     let url = BASE_URL[..BASE_URL.len() - 1].to_string();
     let (client, headers) = get_client_and_headers(config.api_key())?;
-    let resp = client.get(url).headers(headers).send().await?;
+    let resp = client
+        .get(url)
+        .headers(headers)
+        .send()
+        .await?
+        .text()
+        .await?;
 
-    let resp_body = resp.text().await?;
     let json: serde_json::Value =
-        serde_json::from_str(&resp_body).expect("JSON was not well-formatted");
-    let json_bibles = json["data"].as_array().unwrap();
+        serde_json::from_str(&resp).context(JSONError::ErrorWithBibles)?;
+
+    let json_bibles = json["data"]
+        .as_array()
+        .context(JSONError::ErrorWithBibles)?;
+
     let mut bibles: Vec<Bible> = Vec::new();
     for bible in json_bibles {
-        let name = bible["name"].as_str().unwrap().to_string();
-        let id = bible["id"].as_str().unwrap().to_string();
+        let name = bible["name"].as_str().unwrap_or("").to_string();
+        let id = bible["id"].as_str().unwrap_or("").to_string();
         let description = bible["description"].as_str().unwrap_or("").to_string();
         let language = bible["language"]["name"].as_str().unwrap_or("").to_string();
         let bible = Bible::new(name, id, description, language);
@@ -144,12 +172,16 @@ async fn get_books_by_id(config: &Config) -> Result<Vec<String>> {
         .await?
         .text()
         .await?;
-    let json: serde_json::Value = serde_json::from_str(&resp).expect("JSON was not well-formatted");
-
-    let json_book_data = json["data"].as_array().unwrap();
+    let json: serde_json::Value = serde_json::from_str(&resp).context(JSONError::ErrorWithBooks)?;
+    let json_book_data = json["data"].as_array().context(JSONError::ErrorWithBooks)?;
     let mut books: Vec<String> = Vec::new();
     for book in json_book_data {
-        books.push(book["id"].as_str().unwrap().to_string());
+        books.push(
+            book["id"]
+                .as_str()
+                .context(JSONError::ErrorWithBooks)?
+                .to_string(),
+        );
     }
     Ok(books)
 }
@@ -164,8 +196,11 @@ async fn get_bible_info(config: &Config) -> Result<String> {
         .await?
         .text()
         .await?;
-    let json: serde_json::Value = serde_json::from_str(&resp).expect("JSON was not well-formatted");
-    let bible_name = json["data"]["name"].as_str().unwrap();
+    let json: serde_json::Value =
+        serde_json::from_str(&resp).context(JSONError::ErrorWithBibleVersion)?;
+    let bible_name = json["data"]["name"]
+        .as_str()
+        .context(JSONError::ErrorWithBibleVersion)?;
     Ok(bible_name.to_string())
 }
 
@@ -184,11 +219,16 @@ async fn get_books_by_name(config: &Config) -> Result<Vec<String>> {
         .text()
         .await?;
 
-    let json: serde_json::Value = serde_json::from_str(&resp).expect("JSON was not well-formatted");
-    let json_book_data = json["data"].as_array().unwrap();
+    let json: serde_json::Value = serde_json::from_str(&resp).context(JSONError::ErrorWithBooks)?;
+    let json_book_data = json["data"].as_array().context(JSONError::ErrorWithBooks)?;
     let mut books: Vec<String> = Vec::new();
     for book in json_book_data {
-        books.push(book["name"].as_str().unwrap().to_string());
+        books.push(
+            book["name"]
+                .as_str()
+                .context(JSONError::ErrorWithBooks)?
+                .to_string(),
+        );
     }
     Ok(books)
 }
@@ -207,8 +247,10 @@ async fn book_id_to_name(config: &Config, book_id: &str) -> Result<String> {
         .await?
         .text()
         .await?;
-    let json: serde_json::Value = serde_json::from_str(&resp).expect("JSON was not well-formatted");
-    let book_name = json["data"]["name"].as_str().unwrap();
+    let json: serde_json::Value = serde_json::from_str(&resp).context(JSONError::ErrorWithBooks)?;
+    let book_name = json["data"]["name"]
+        .as_str()
+        .context(JSONError::ErrorWithBooks)?;
     Ok(book_name.to_string())
 }
 
@@ -245,8 +287,12 @@ async fn get_random_verse(
         .text()
         .await?;
 
-    let json: serde_json::Value = serde_json::from_str(&resp).expect("JSON was not well-formatted");
-    let verse_text = json["data"]["content"].as_str().unwrap().trim();
+    let json: serde_json::Value =
+        serde_json::from_str(&resp).context(JSONError::ErrorWithVerses)?;
+    let verse_text = json["data"]["content"]
+        .as_str()
+        .context(JSONError::ErrorWithVerses)?
+        .trim();
     let verse = String::from(verse_text);
     Ok((verse, verse_id))
 }
@@ -264,11 +310,20 @@ async fn get_random_verse_id(config: &Config, chapter: &str, rng: &mut StdRng) -
         .await?
         .text()
         .await?;
-    let json: serde_json::Value = serde_json::from_str(&resp).expect("JSON was not well-formatted");
-    let verse_list = json["data"].as_array().unwrap();
+
+    let json: serde_json::Value =
+        serde_json::from_str(&resp).context(JSONError::ErrorWithVerses)?;
+    let verse_list = json["data"]
+        .as_array()
+        .context(JSONError::ErrorWithVerses)?;
     let verse_index = rng.gen_range(0..verse_list.len());
-    let verse = verse_list.get(verse_index).unwrap();
-    let verse_id = verse["id"].as_str().unwrap().to_string();
+    let verse = verse_list
+        .get(verse_index)
+        .context(JSONError::ErrorWithVerses)?;
+    let verse_id = verse["id"]
+        .as_str()
+        .context(JSONError::ErrorWithVerses)?
+        .to_string();
     Ok(verse_id)
 }
 
@@ -286,7 +341,7 @@ async fn get_random_book(config: &Config, rng: &mut StdRng) -> Result<String> {
         .text()
         .await?;
 
-    let json: serde_json::Value = serde_json::from_str(&resp).expect("JSON was not well-formatted");
+    let json: serde_json::Value = serde_json::from_str(&resp).context(JSONError::ErrorWithBooks)?;
     let book_list = json["data"].as_array().unwrap();
     let book_index = rng.gen_range(0..book_list.len());
 
@@ -310,14 +365,22 @@ async fn get_random_chapter(config: &Config, book: &str, rng: &mut StdRng) -> Re
         .await?
         .text()
         .await?;
-    let json: serde_json::Value = serde_json::from_str(&resp).expect("JSON was not well-formatted");
-    let chapter_list = json["data"].as_array().unwrap();
+    let json: serde_json::Value =
+        serde_json::from_str(&resp).context("json error while getting random chapter")?;
+    let chapter_list = json["data"]
+        .as_array()
+        .context(JSONError::ErrorWithChapters)?;
     let mut chapter_index = rng.gen_range(0..chapter_list.len());
     let mut chapter = chapter_list.get(chapter_index).unwrap();
     if chapter["number"] == "intro" {
         chapter_index = chapter_index + 1;
-        chapter = chapter_list.get(chapter_index).unwrap();
+        chapter = chapter_list
+            .get(chapter_index)
+            .context(JSONError::ErrorWithChapters)?;
     }
-    let chapter = chapter["id"].as_str().unwrap().to_string();
+    let chapter = chapter["id"]
+        .as_str()
+        .context(JSONError::ErrorWithChapters)?
+        .to_string();
     Ok(chapter)
 }

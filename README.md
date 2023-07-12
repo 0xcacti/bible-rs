@@ -1,11 +1,22 @@
-## Welcome to bible-rs 
+## bible-rs
 
-I am working on learning rust.  I want to improve my skills.  The plan here is 
-to write a CLI tool that can return a random Bible verse each day.  I want to add
-another setting that lets you get a verse from a specified book as well.  
+bible-rs is a verse of the day Bible CLI tool written in rust.  I am a brand new 
+rust developer, so please tear apart the code that I have written if you see fit 
+to do so.  
+
+The tool currently allows you to do the following
+
+  list    Get a list of Books in the provided Bible version
+  daily   Get the daily random verse from the Bible
+  new     Get a new random verse from the Bible
+  book    Get a random verse from a specific book of the Bible
+  bibles  Get available Bible versions
 
 
-there are many things still to do but here is a short list 
+Bible verses and transalations are pulled from this [Bible API](#https://docs.api.bible/)
 
-pivot to using fully unwrap_or_else where you have to unwrap 
-write testing 
+You can configure your api_key and version via the bible-rs.toml file, environment variable 
+or CLI flag.  
+
+
+
