@@ -13,7 +13,7 @@ The tool currently allows you to do the following
   bibles  Get available Bible versions
 
 
-Bible verses and transalations are pulled from this [Bible API](#https://docs.api.bible/)
+Bible verses and transalations are pulled from this [Bible API](https://docs.api.bible/)
 
 You can configure your api_key and version via the bible-rs.toml file, environment variable 
 or CLI flag.  
