@@ -58,8 +58,8 @@ async fn main() {
         None => match config.api_key {
             Some(api_key) => config.api_key = Some(api_key),
             None => {
-                eprintln!("No API key provided. Please provide an API key using the --api-key flag, 
-                          setting api_key in the bible-rs.toml file, or by setting the BIBLE_RS_API_KEY environment variable.");
+                eprintln!("No API key provided. Please provide an API key using the --api-key flag, setting api_key in the bible-rs.toml file, or by setting the BIBLE_RS_API_KEY environment variable.");
+                process::exit(1);
             }
         },
     }
@@ -69,8 +69,8 @@ async fn main() {
         None => match config.bible_version {
             Some(bible_version) => config.bible_version = Some(bible_version),
             None => {
-                eprintln!("No Bible version provided. Please provide a Bible version using the --bible-version flag, 
-                          setting bible_version in the bible-rs.toml file, or by setting the BIBLE_RS_BIBLE_VERSION environment variable.");
+                eprintln!("No Bible version provided. Please provide a Bible version using the --bible-version flag, setting bible_version in the bible-rs.toml file, or by setting the BIBLE_RS_BIBLE_VERSION environment variable.");
+                process::exit(1);
             }
         },
     }

@@ -50,12 +50,14 @@ impl Bible {
 
 impl fmt::Display for Verse {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // create a reference for the verse
         let reference = format!("{} {}:{}", self.book, self.chapter, self.number);
-        // Determine the width of the console. You may want to set this to a fixed value if you prefer.
+
+        // Determine the width of the console.
         let size = termsize::get().unwrap();
-        // Get the width of the terminal
         let width = size.cols as usize;
 
+        // determine offset for reference to pretty print
         let mut padding = 0;
         if width < 10 {
         } else if width < self.verse.len() {
@@ -63,6 +65,8 @@ impl fmt::Display for Verse {
         } else {
             padding = self.verse.len();
         }
+
+        // write to the formatter
         write!(
             f,
             "{}\n\n{:>padding$}",
@@ -75,6 +79,7 @@ impl fmt::Display for Verse {
 
 impl fmt::Display for Books {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // contruct string with bible name
         let mut output = String::new();
         output.push_str(&self.version);
         output.push_str("\n");
@@ -89,6 +94,7 @@ impl fmt::Display for Books {
 
 impl fmt::Display for Bible {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // construct string
         let mut output = String::new();
         output.push_str("Bible: ");
         output.push_str(&self.name);
