@@ -60,7 +60,7 @@ pub async fn get_daily_verse(config: &Config) -> Result<Verse> {
     let book = get_random_book(config, &mut rng).await?;
     let chapter = get_random_chapter(config, book.as_ref(), &mut rng).await?;
     let (verse, verse_id) = get_random_verse(config, chapter.as_ref(), &mut rng).await?;
-    let verse_identifiers = verse_id.split(".").collect::<Vec<&str>>();
+    let verse_identifiers = verse_id.split('.').collect::<Vec<&str>>();
     let book_name = book_id_to_name(config, verse_identifiers[0]).await?;
     let verse = Verse::new(
         verse,
@@ -74,10 +74,10 @@ pub async fn get_daily_verse(config: &Config) -> Result<Verse> {
 /// fetch a new random verse
 pub async fn get_new_verse(config: &Config) -> Result<Verse> {
     let mut rng = get_rng();
-    let book = get_random_book(&config, &mut rng).await?;
-    let chapter = get_random_chapter(&config, book.as_ref(), &mut rng).await?;
+    let book = get_random_book(config, &mut rng).await?;
+    let chapter = get_random_chapter(config, book.as_ref(), &mut rng).await?;
     let (verse, verse_id) = get_random_verse(config, chapter.as_ref(), &mut rng).await?;
-    let verse_identifiers = verse_id.split(".").collect::<Vec<&str>>();
+    let verse_identifiers = verse_id.split('.').collect::<Vec<&str>>();
     let book_name = book_id_to_name(config, verse_identifiers[0]).await?;
     let verse = Verse::new(
         verse,
@@ -108,7 +108,7 @@ pub async fn get_new_verse_from_book(config: &Config, book: &str) -> Result<Vers
     let mut rng = get_rng();
     let chapter = get_random_chapter(config, book_id, &mut rng).await?;
     let (verse, verse_id) = get_random_verse(config, chapter.as_ref(), &mut rng).await?;
-    let verse_identifiers = verse_id.split(".").collect::<Vec<&str>>();
+    let verse_identifiers = verse_id.split('.').collect::<Vec<&str>>();
     let verse = Verse::new(
         verse,
         book.to_string(),
@@ -381,7 +381,7 @@ async fn get_random_chapter(config: &Config, book: &str, rng: &mut StdRng) -> Re
         .context(JSONError::ErrorWithChapters)?;
 
     if chapter["number"] == "intro" {
-        chapter_index = chapter_index + 1;
+        chapter_index += 1;
         chapter = chapter_list
             .get(chapter_index)
             .context(JSONError::ErrorWithChapters)?;

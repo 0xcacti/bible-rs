@@ -82,10 +82,10 @@ impl fmt::Display for Books {
         // contruct string with bible name
         let mut output = String::new();
         output.push_str(&self.version);
-        output.push_str("\n");
+        output.push('\n');
         output.push_str(&"=".repeat(self.version.len()));
         for book in &self.books {
-            output.push_str("\n");
+            output.push('\n');
             output.push_str(book);
         }
         write!(f, "{}", output)
@@ -98,16 +98,16 @@ impl fmt::Display for Bible {
         let mut output = String::new();
         output.push_str("Bible: ");
         output.push_str(&self.name);
-        output.push_str("\n");
+        output.push('\n');
         output.push_str("Description: ");
         output.push_str(&self.description);
-        output.push_str("\n");
+        output.push('\n');
         output.push_str("Language: ");
         output.push_str(&self.language);
-        output.push_str("\n");
+        output.push('\n');
         output.push_str("ID: ");
         output.push_str(&self.id);
-        output.push_str("\n");
-        write!(f, "{}\n", output)
+        output.push('\n');
+        writeln!(f, "{}", output)
     }
 }

@@ -118,6 +118,6 @@ async fn main() {
                 process::exit(1);
             }
         },
-        None => return,
+        None => {}
     }
 }
