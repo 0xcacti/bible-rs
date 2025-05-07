@@ -53,10 +53,12 @@ impl fmt::Display for Verse {
         // create a reference for the verse
         let reference = format!("{} {}:{}", self.book, self.chapter, self.number);
 
+        let mut width: usize = 100; 
         // Determine the width of the console.
-        let size = termsize::get().unwrap();
-        let width = size.cols as usize;
-
+        if !termsize::get().is_none() {
+            let size = termsize::get().unwrap();
+            width = size.cols as usize;
+        }
         // determine offset for reference to pretty print
         let mut padding = 0;
         if width < 10 {
